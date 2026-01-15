@@ -1,215 +1,308 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Utensils, Info, BookOpen, AlertCircle, ChevronRight, Filter } from 'lucide-react';
+import React, { useMemo, useRef, useState } from "react";
 
-// レシピデータの拡張 (主要なカテゴリーを網羅)
-const RECIPE_DATA = {
-  // --- カレー・シチュー ---
-  "1": { category: "カレー・シチュー", name: "肉じゃが", ingredients: ["じゃがいも: 3個", "たまねぎ: 2個", "にんじん: 1/2本", "牛バラ肉: 200g", "調味料(醤油・酒・砂糖・みりん 各大3)"], points: "水は入れません。野菜の水分でおいしくなります。" },
-  "2": { category: "カレー・シチュー", name: "無水カレー", ingredients: ["トマト: 3個", "たまねぎ: 2個", "鶏もも肉: 1枚", "カレールー: 4〜5皿分"], points: "トマトの水分だけで作るので濃厚な味になります。" },
-  "3": { category: "カレー・シチュー", name: "ビーフシチュー", ingredients: ["牛すね肉: 400g", "じゃがいも: 2個", "たまねぎ: 2個", "デミグラスソース缶: 1缶"], points: "お肉を赤ワインに漬けるとより柔らかくなります。" },
-  "4": { category: "カレー・シチュー", name: "クリームシチュー", ingredients: ["鶏もも肉: 1枚", "たまねぎ: 1個", "牛乳: 200ml(後入れ)"], points: "牛乳は加熱終了後に加えて延長加熱すると分離しません。" },
+export default function App() {
+  const fileRef = useRef(null);
+  const [imageUrl, setImageUrl] = useState(null);
 
-  // --- 煮物 ---
-  "5": { category: "煮物", name: "おでん", ingredients: ["大根: 300g", "練り物: 適量", "だし汁: 600ml"], points: "大根に隠し包丁を入れると味が染み込みます。" },
-  "6": { category: "煮物", name: "筑前煮", ingredients: ["鶏肉: 150g", "ごぼう: 1/2本", "れんこん: 150g"], points: "根菜は大きく切って食感を楽しみましょう。" },
-  "7": { category: "煮物", name: "かぼちゃの煮物", ingredients: ["かぼちゃ: 1/4個", "水: 大3", "調味料"], points: "皮を下に並べると煮崩れしません。" },
-  "10": { category: "煮物", name: "きんぴらごぼう", ingredients: ["ごぼう: 150g", "にんじん: 1/2本", "ごま油: 大1"], points: "まぜ技ユニットがしっかり味を絡めます。" },
-  "56": { category: "煮物", name: "豚の角煮", ingredients: ["豚バラ肉(塊): 500g", "生姜: 1かけ", "ネギの青い部分"], points: "お肉を先に下茹でするモード(No.68)を使うと脂が抜けます。" },
+  const [text, setText] = useState("made with ChatGPT by hiromi");
+  const [fontSize, setFontSize] = useState(32);
+  const [opacity, setOpacity] = useState(0.7);
+  const [padding, setPadding] = useState(24);
+  const [pos, setPos] = useState("br"); // br, bl, tr, tl
+  const [color, setColor] = useState("#ffffff");
 
-  // --- 魚料理 ---
-  "12": { category: "魚料理", name: "さばのみそ煮", ingredients: ["さば: 2〜4切れ", "生姜: 1かけ", "味噌・みりん・酒"], points: "皮を上にして重ならないように並べます。" },
-  "13": { category: "魚料理", name: "いわしの骨まで煮", ingredients: ["いわし: 6〜8匹", "梅干し: 2個", "調味料"], points: "約2時間半かけて骨まで柔らかくします。" },
-  "114": { category: "魚料理", name: "あさりの酒蒸し", ingredients: ["あさり: 300g", "酒: 大2"], points: "砂抜きをしっかりしてから調理してください。" },
+  const posLabel = useMemo(
+    () => ({
+      tl: "左上",
+      tr: "右上",
+      bl: "左下",
+      br: "右下",
+    }),
+    []
+  );
 
-  // --- スープ・汁物 ---
-  "42": { category: "スープ", name: "ポトフ", ingredients: ["ソーセージ: 4〜6本", "キャベツ: 1/4個", "水: 600ml"], points: "キャベツの芯を付けたまま大きく切ると甘みが出ます。" },
-  "43": { category: "スープ", name: "豚汁", ingredients: ["豚バラ肉: 100g", "大根: 100g", "味噌: 大4"], points: "具だくさんで野菜の旨みがしっかり出ます。" },
-  "45": { category: "スープ", name: "みそ汁", ingredients: ["豆腐・わかめなど好きな具材", "だし汁: 600ml"], points: "毎朝の時短に最適です。" },
+  function onPickFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+  }
 
-  // --- 麺・ごはん ---
-  "100": { category: "麺・ごはん", name: "ナポリタン風パスタ", ingredients: ["パスタ(7分茹で): 100g", "玉ねぎ・ピーマン", "水: 220ml"], points: "乾麺のまま入れてOK！半分に折って入れます。" },
-  "101": { category: "麺・ごはん", name: "ちゃんぽん麺", ingredients: ["ちゃんぽん麺: 1玉", "冷凍シーフードミックス", "水: 200ml"], points: "野菜たっぷりで栄養満点です。" },
+  async function downloadMerged() {
+    if (!imageUrl) return;
 
-  // --- お菓子・パン ---
-  "63": { category: "お菓子", name: "スポンジケーキ", ingredients: ["卵: 3個", "小麦粉: 90g", "砂糖: 90g"], points: "内鍋にバターをしっかり塗ると綺麗に取り出せます。" },
-  "64": { category: "お菓子", name: "ブラウニー", ingredients: ["チョコ: 100g", "くるみ: 適量"], points: "濃厚でしっとりした仕上がりになります。" },
-  "108": { category: "お菓子", name: "サラダチキン", ingredients: ["鶏むね肉: 1枚(250g)", "塩・酒"], points: "低温調理でしっとりジューシーに仕上がります。" },
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageUrl;
 
-  // --- その他・定番 ---
-  "26": { category: "定番", name: "ゆで卵", ingredients: ["卵: 1〜6個", "水: 100ml"], points: "蒸し板を使います。好みの固さで時間を調整してください。" },
-  "80": { category: "定番", name: "麻婆豆腐", ingredients: ["豆腐: 1丁", "ひき肉: 100g", "合わせ調味料"], points: "豆腐が崩れないようにそっと入れます。" }
-};
-
-const App = () => {
-  const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('すべて');
-  const [result, setResult] = useState(null);
-
-  const categories = ['すべて', ...new Set(Object.values(RECIPE_DATA).map(r => r.category))];
-
-  // フィルタリングされたレシピリスト
-  const filteredList = useMemo(() => {
-    return Object.entries(RECIPE_DATA).filter(([no, data]) => {
-      const matchesCategory = activeCategory === 'すべて' || data.category === activeCategory;
-      const matchesQuery = no.includes(query) || data.name.includes(query);
-      return matchesCategory && matchesQuery;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
     });
-  }, [query, activeCategory]);
 
-  const handleSearch = (no) => {
-    setResult(RECIPE_DATA[no]);
-    setQuery(no);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    const scale = canvas.width / 1200;
+    const fs = Math.max(12, Math.round(fontSize * scale));
+    const pad = Math.round(padding * scale);
+
+    ctx.font = `${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = opacity;
+
+    const metrics = ctx.measureText(text);
+    const textW = metrics.width;
+    const textH = fs;
+
+    let x = pad;
+    let y = canvas.height - pad;
+
+    ctx.textBaseline = "bottom";
+
+    if (pos === "br") {
+      x = canvas.width - pad - textW;
+      y = canvas.height - pad;
+    } else if (pos === "bl") {
+      x = pad;
+      y = canvas.height - pad;
+    } else if (pos === "tr") {
+      x = canvas.width - pad - textW;
+      y = pad + textH;
+    } else if (pos === "tl") {
+      x = pad;
+      y = pad + textH;
+    }
+
+    // 文字を読みやすくする影
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, opacity);
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = Math.round(8 * scale);
+    ctx.shadowOffsetX = Math.round(2 * scale);
+    ctx.shadowOffsetY = Math.round(2 * scale);
+    ctx.fillText(text, x, y);
+    ctx.restore();
+
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "signed.png";
+    a.click();
+  }
+
+  const ColorChip = ({ value, label }) => {
+    const selected = color.toLowerCase() === value.toLowerCase();
+    return (
+      <button
+        type="button"
+        onClick={() => setColor(value)}
+        className={[
+          "h-10 w-10 rounded-full border-2 transition-all",
+          "shadow-sm",
+          selected
+            ? "border-pink-500 ring-4 ring-pink-200"
+            : "border-white/60 hover:ring-4 hover:ring-pink-100",
+        ].join(" ")}
+        aria-label={label}
+        title={label}
+        style={{ backgroundColor: value }}
+      />
+    );
+  };
+
+  const PosButton = ({ value, children }) => {
+    const active = pos === value;
+    return (
+      <button
+        type="button"
+        onClick={() => setPos(value)}
+        className={[
+          "rounded-2xl px-4 py-3 text-sm font-semibold transition-all",
+          "shadow-sm",
+          active
+            ? "bg-pink-500 text-white shadow-md"
+            : "bg-white/70 text-pink-600 hover:bg-white",
+        ].join(" ")}
+      >
+        {children}
+      </button>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-orange-50/50 p-4 md:p-8 font-sans text-slate-800">
-      <div className="max-w-3xl mx-auto">
-        
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white text-slate-800">
+      <div className="mx-auto max-w-5xl p-6 md:p-10 space-y-6">
         {/* Header */}
-        <header className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="bg-red-600 p-4 rounded-3xl shadow-xl transform -rotate-2">
-              <BookOpen className="text-white w-10 h-10" />
+        <div className="rounded-[28px] bg-white/80 backdrop-blur border border-pink-100 shadow-[0_20px_60px_-35px_rgba(244,114,182,0.65)] px-6 py-6 md:px-8">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-400 grid place-items-center shadow-md">
+              <span className="text-white text-2xl font-black">T</span>
             </div>
-          </div>
-          <h1 className="text-3xl font-black text-red-600 tracking-tight">ホットクック・マスター</h1>
-          <p className="text-slate-500 font-bold mt-1 uppercase text-xs tracking-[0.2em]">KN-HW16H Recipe Database</p>
-        </header>
-
-        {/* Search & Filter Section */}
-        <div className="bg-white rounded-[2.5rem] p-6 shadow-xl shadow-orange-100 border border-white mb-8">
-          <div className="relative mb-6">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setResult(null);
-              }}
-              placeholder="メニュー番号または料理名で検索..."
-              className="w-full pl-12 pr-6 py-4 bg-orange-50/50 border-2 border-transparent focus:border-red-400 rounded-2xl outline-none transition-all text-lg font-bold placeholder:text-orange-200"
-            />
-            <Search className="absolute left-4 top-4.5 text-orange-300" size={24} />
-          </div>
-
-          {/* Category Pills */}
-          <div className="flex flex-wrap gap-2">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                  activeCategory === cat 
-                  ? 'bg-red-500 text-white shadow-md shadow-red-200' 
-                  : 'bg-orange-50 text-orange-400 hover:bg-orange-100'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-pink-600">
+                署名メーカー
+              </h1>
+              <p className="text-xs md:text-sm text-pink-400 font-semibold tracking-widest">
+                SIGN YOUR WORK
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Display Content */}
-        {result ? (
-          /* Single Recipe View */
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <button 
-              onClick={() => setResult(null)}
-              className="mb-4 text-orange-400 font-bold flex items-center gap-1 hover:text-red-500 transition-colors"
-            >
-              ← リストに戻る
-            </button>
-            <div className="bg-white rounded-[3rem] p-8 shadow-2xl border border-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
-                <Utensils size={160} />
+        <div className="grid gap-6 md:grid-cols-1">
+          {/* Controls */}
+          <div className="rounded-[28px] bg-white/80 backdrop-blur border border-pink-100 shadow-[0_20px_60px_-35px_rgba(244,114,182,0.65)] p-6 md:p-7 space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-3 font-bold shadow-md hover:opacity-95 active:scale-[0.99] transition"
+              >
+                画像を選ぶ
+              </button>
+              <button
+                type="button"
+                onClick={downloadMerged}
+                disabled={!imageUrl}
+                className={[
+                  "rounded-2xl px-5 py-3 font-bold shadow-md transition",
+                  !imageUrl
+                    ? "bg-pink-200 text-white/70 cursor-not-allowed"
+                    : "bg-white text-pink-600 border border-pink-200 hover:bg-pink-50 active:scale-[0.99]",
+                ].join(" ")}
+              >
+                署名入りPNGを保存
+              </button>
+
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPickFile}
+              />
+            </div>
+
+            {/* Text */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-pink-500 font-extrabold">
+                <span className="inline-block text-lg">T</span>
+                <span>署名テキスト</span>
               </div>
-              
-              <div className="relative">
-                <span className="bg-red-100 text-red-600 px-4 py-1.5 rounded-full text-sm font-black mb-4 inline-block">
-                  MENU NO. {query}
-                </span>
-                <h2 className="text-4xl font-black text-slate-800 mb-8 tracking-tighter">{result.name}</h2>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  <section>
-                    <h3 className="flex items-center gap-2 text-slate-800 font-black mb-4 border-l-4 border-red-500 pl-3 uppercase tracking-wider text-sm">
-                      <Utensils size={18} className="text-red-500" />
-                      材料の目安
-                    </h3>
-                    <ul className="space-y-3">
-                      {result.ingredients.map((ing, i) => (
-                        <li key={i} className="flex items-center gap-3 text-slate-600 font-medium">
-                          <div className="w-1.5 h-1.5 bg-red-200 rounded-full" />
-                          {ing}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                  
-                  <section>
-                    <h3 className="flex items-center gap-2 text-slate-800 font-black mb-4 border-l-4 border-red-500 pl-3 uppercase tracking-wider text-sm">
-                      <Info size={18} className="text-red-500" />
-                      調理のポイント
-                    </h3>
-                    <div className="bg-red-50/50 p-6 rounded-3xl border border-red-100 italic text-red-900 leading-relaxed shadow-inner">
-                      {result.points}
-                    </div>
-                  </section>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full rounded-2xl bg-pink-50 border border-pink-100 px-4 py-4 text-lg font-semibold outline-none focus:ring-4 focus:ring-pink-200"
+                placeholder="例：made with ChatGPT by hiromi"
+              />
+            </div>
+
+            {/* Sliders */}
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">サイズ</span>
+                  <span className="text-sm font-bold text-pink-500">
+                    {fontSize}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="12"
+                  max="96"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="w-full accent-pink-500"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">透明度</span>
+                  <span className="text-sm font-bold text-pink-500">
+                    {opacity}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={opacity}
+                  onChange={(e) => setOpacity(Number(e.target.value))}
+                  className="w-full accent-pink-500"
+                />
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">余白</span>
+                  <span className="text-sm font-bold text-pink-500">
+                    {padding}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="80"
+                  value={padding}
+                  onChange={(e) => setPadding(Number(e.target.value))}
+                  className="w-full accent-pink-500"
+                />
+              </label>
+            </div>
+
+            {/* Colors */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-pink-500 font-extrabold">
+                <span>🎨</span>
+                <span>文字色</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <ColorChip value="#ffffff" label="白" />
+                <ColorChip value="#111827" label="黒" />
+                <ColorChip value="#ff4da6" label="ピンク" />
+                <ColorChip value="#93c5fd" label="水色" />
+                <ColorChip value="#a7f3d0" label="ミント" />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-slate-600">
+                    自由
+                  </span>
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="h-10 w-14 rounded-2xl border-2 border-white/60 shadow-sm"
+                    title="カスタム色"
+                  />
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          /* List Browse View */
-          <div className="space-y-3">
-            <h3 className="text-orange-900/40 font-black uppercase tracking-[0.2em] text-xs px-4 flex items-center gap-2">
-              <Filter size={14} />
-              レシピ検索結果 ({filteredList.length})
-            </h3>
-            
-            {filteredList.length > 0 ? (
-              <div className="grid gap-3">
-                {filteredList.map(([no, data]) => (
-                  <button
-                    key={no}
-                    onClick={() => handleSearch(no)}
-                    className="w-full bg-white hover:bg-red-50 p-5 rounded-3xl flex items-center justify-between group transition-all border border-transparent hover:border-red-100 shadow-sm hover:shadow-md"
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center font-black text-orange-400 group-hover:bg-white group-hover:text-red-500 transition-colors">
-                        {no}
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold text-orange-300 uppercase tracking-widest">{data.category}</p>
-                        <p className="text-lg font-black text-slate-700">{data.name}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="text-orange-100 group-hover:text-red-300 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white/40 border-4 border-dashed border-orange-100 rounded-[3rem] py-20 text-center">
-                <AlertCircle className="mx-auto text-orange-200 mb-3" size={48} />
-                <p className="text-orange-300 font-bold text-lg">レシピが見つかりませんでした</p>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Guide Text */}
-        {!result && (
-          <div className="mt-12 text-center bg-orange-100/30 p-8 rounded-[3rem]">
-            <p className="text-orange-900/40 text-sm font-bold leading-relaxed">
-              番号が分かれば直接入力、分からなければカテゴリーから選んでください。<br/>
-              ※材料は目安です。詳細は公式レシピブックをご確認ください。
+            {/* Position */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-pink-500 font-extrabold">
+                <span>✥</span>
+                <span>位置</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <PosButton value="tl">左上</PosButton>
+                <PosButton value="tr">右上</PosButton>
+                <PosButton value="bl">左下</PosButton>
+                <PosButton value="br">右下</PosButton>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              画像は端末内で合成して保存します（ローカル処理）。外部に送信しません。
             </p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
-};
-
-export default App;
+}
